@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
-import { dataService } from '../services/dataService';
+import { hybridDataService } from '../services/hybridDataService';
+import { firebaseService } from '../services/firebaseService';
 
 interface RegisterData {
   name: string;
@@ -45,10 +46,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(parsedUser);
         
         // Update user as active in the system
-        const systemUser = dataService.getUser(parsedUser.email);
+        const systemUser = await hybridDataService.getUser(parsedUser.email);
         if (systemUser) {
           systemUser.isActive = true;
-          dataService.updateUser(systemUser);
+          await hybridDataService.updateUser(systemUser);
         }
       } catch (error) {
         console.error('Error loading saved user:', error);
@@ -59,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const authenticatedUser = dataService.authenticateUser(email, password);
+    const authenticatedUser = await hybridDataService.authenticateUser(email, password);
     if (authenticatedUser) {
       setUser(authenticatedUser);
       localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
@@ -71,9 +72,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (data: RegisterData): Promise<boolean> => {
     try {
       // Check if user already exists
-      const existingUser = dataService.getUser(data.email);
+      const existingUser = await hybridDataService.getUser(data.email);
       if (existingUser) {
         return false;
+      }
+
+      // Create Firebase user first
+      try {
+        await firebaseService.signUp(data.email, data.password);
+      } catch (firebaseError) {
+        console.error('Firebase registration failed:', firebaseError);
+        // Continue with local registration
       }
 
       // Create new user
@@ -91,18 +100,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       // Save user and create login session
-      dataService.addUser(newUser);
-      dataService.createLoginSession(newUser);
+      await hybridDataService.addUser(newUser);
+      await hybridDataService.createLoginSession(newUser);
       
       // Store password (in production, this would be hashed)
-      dataService.setUserPassword(data.email, data.password);
+      hybridDataService.setUserPassword(data.email, data.password);
 
       // Set as current user
       setUser(newUser);
       localStorage.setItem('currentUser', JSON.stringify(newUser));
 
       // Add welcome notification
-      dataService.addNotification({
+      await hybridDataService.addNotification({
         id: `notif-${Date.now()}`,
         userId: newUser.id,
         title: 'Welcome to Isaac Asimov Lab! 🎉',
@@ -122,7 +131,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     if (user) {
       // End login session
-      dataService.endLoginSession(user.id);
+      hybridDataService.endLoginSession(user.id);
+      
+      // Sign out from Firebase
+      firebaseService.signOut().catch(error => {
+        console.error('Firebase sign out error:', error);
+      });
     }
     setUser(null);
     localStorage.removeItem('currentUser');

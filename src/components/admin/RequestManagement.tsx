@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Package, User, Phone, Calendar, AlertTriangle, Search, Filter } from 'lucide-react';
-import { dataService } from '../../services/dataService';
+import { hybridDataService } from '../../services/hybridDataService';
 import { BorrowRequest, Component } from '../../types';
 
 interface RequestManagementProps {
@@ -18,45 +18,51 @@ const RequestManagement: React.FC<RequestManagementProps> = ({ onUpdate }) => {
   }, []);
 
   const loadRequests = () => {
-    const allRequests = dataService.getRequests();
+    hybridDataService.getRequests().then(requests => {
     setRequests(allRequests.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()));
+    }).catch(error => {
+      console.error('Error loading requests:', error);
+    });
   };
 
   const handleApprove = (request: BorrowRequest) => {
-    const components = dataService.getComponents();
-    const component = components.find(c => c.id === request.componentId);
-    
-    if (!component || component.availableQuantity < request.quantity) {
-      alert('Not enough components available!');
-      return;
-    }
+    hybridDataService.getComponents().then(components => {
+      const component = components.find(c => c.id === request.componentId);
+      
+      if (!component || component.availableQuantity < request.quantity) {
+        alert('Not enough components available!');
+        return;
+      }
 
-    // Update component availability
-    component.availableQuantity -= request.quantity;
-    dataService.updateComponent(component);
+      // Update component availability
+      component.availableQuantity -= request.quantity;
+      hybridDataService.updateComponent(component);
 
-    // Update request status
-    const updatedRequest = {
-      ...request,
-      status: 'approved' as const,
-      approvedBy: 'Administrator',
-      approvedAt: new Date().toISOString(),
-    };
-    dataService.updateRequest(updatedRequest);
+      // Update request status
+      const updatedRequest = {
+        ...request,
+        status: 'approved' as const,
+        approvedBy: 'Administrator',
+        approvedAt: new Date().toISOString(),
+      };
+      hybridDataService.updateRequest(updatedRequest);
 
-    // Add notification for student
-    dataService.addNotification({
-      id: `notif-${Date.now()}`,
-      userId: request.studentId,
-      title: 'Request Approved! 🎉',
-      message: `Your request for ${request.componentName} x${request.quantity} has been approved. Come and get it in the Isaac Asimov Robotics Lab.`,
-      type: 'success',
-      read: false,
-      createdAt: new Date().toISOString(),
+      // Add notification for student
+      hybridDataService.addNotification({
+        id: `notif-${Date.now()}`,
+        userId: request.studentId,
+        title: 'Request Approved! 🎉',
+        message: `Your request for ${request.componentName} x${request.quantity} has been approved. Come and get it in the Isaac Asimov Robotics Lab.`,
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      loadRequests();
+      onUpdate();
+    }).catch(error => {
+      console.error('Error approving request:', error);
     });
-
-    loadRequests();
-    onUpdate();
   };
 
   const handleReject = (request: BorrowRequest, reason: string) => {
@@ -65,10 +71,10 @@ const RequestManagement: React.FC<RequestManagementProps> = ({ onUpdate }) => {
       status: 'rejected' as const,
       notes: reason,
     };
-    dataService.updateRequest(updatedRequest);
+    hybridDataService.updateRequest(updatedRequest);
 
     // Add notification for student
-    dataService.addNotification({
+    hybridDataService.addNotification({
       id: `notif-${Date.now()}`,
       userId: request.studentId,
       title: 'Request Update',

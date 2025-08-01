@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, Package, User, Calendar, CheckCircle, Search, Filter } from 'lucide-react';
-import { dataService } from '../../services/dataService';
+import { hybridDataService } from '../../services/hybridDataService';
 import { BorrowRequest } from '../../types';
 
 interface ReturnManagementProps {
@@ -18,40 +18,46 @@ const ReturnManagement: React.FC<ReturnManagementProps> = ({ onUpdate }) => {
   }, []);
 
   const loadApprovedItems = () => {
-    const allRequests = dataService.getRequests();
-    const approved = allRequests.filter(r => r.status === 'approved');
-    setApprovedItems(approved.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()));
+    hybridDataService.getRequests().then(allRequests => {
+      const approved = allRequests.filter(r => r.status === 'approved');
+      setApprovedItems(approved.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()));
+    }).catch(error => {
+      console.error('Error loading approved items:', error);
+    });
   };
 
   const handleReturn = (request: BorrowRequest) => {
-    const components = dataService.getComponents();
-    const component = components.find(c => c.id === request.componentId);
-    
-    if (component) {
-      component.availableQuantity += request.quantity;
-      dataService.updateComponent(component);
-    }
+    hybridDataService.getComponents().then(components => {
+      const component = components.find(c => c.id === request.componentId);
+      
+      if (component) {
+        component.availableQuantity += request.quantity;
+        hybridDataService.updateComponent(component);
+      }
 
-    const updatedRequest = {
-      ...request,
-      status: 'returned' as const,
-      returnedAt: new Date().toISOString(),
-    };
-    dataService.updateRequest(updatedRequest);
+      const updatedRequest = {
+        ...request,
+        status: 'returned' as const,
+        returnedAt: new Date().toISOString(),
+      };
+      hybridDataService.updateRequest(updatedRequest);
 
-    // Add notification for student
-    dataService.addNotification({
-      id: `notif-${Date.now()}`,
-      userId: request.studentId,
-      title: 'Item Returned Successfully',
-      message: `Your return of ${request.componentName} x${request.quantity} has been confirmed. Thank you for using Isaac Asimov Robotics Lab!`,
-      type: 'success',
-      read: false,
-      createdAt: new Date().toISOString(),
+      // Add notification for student
+      hybridDataService.addNotification({
+        id: `notif-${Date.now()}`,
+        userId: request.studentId,
+        title: 'Item Returned Successfully',
+        message: `Your return of ${request.componentName} x${request.quantity} has been confirmed. Thank you for using Isaac Asimov Robotics Lab!`,
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      loadApprovedItems();
+      onUpdate();
+    }).catch(error => {
+      console.error('Error processing return:', error);
     });
-
-    loadApprovedItems();
-    onUpdate();
   };
 
   const filteredItems = approvedItems.filter(item => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Package, Search } from 'lucide-react';
-import { dataService } from '../../services/dataService';
+import { hybridDataService } from '../../services/hybridDataService';
 import { Component } from '../../types';
 
 const InventoryManagement: React.FC = () => {
@@ -21,7 +21,11 @@ const InventoryManagement: React.FC = () => {
   }, []);
 
   const loadComponents = () => {
-    setComponents(dataService.getComponents());
+    hybridDataService.getComponents().then(components => {
+      setComponents(components);
+    }).catch(error => {
+      console.error('Error loading components:', error);
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -36,7 +40,7 @@ const InventoryManagement: React.FC = () => {
         category: formData.category,
         description: formData.description,
       };
-      dataService.updateComponent(updatedComponent);
+      hybridDataService.updateComponent(updatedComponent);
     } else {
       const newComponent: Component = {
         id: `comp-${Date.now()}`,
@@ -46,7 +50,7 @@ const InventoryManagement: React.FC = () => {
         category: formData.category,
         description: formData.description,
       };
-      dataService.addComponent(newComponent);
+      hybridDataService.addComponent(newComponent);
     }
 
     resetForm();
