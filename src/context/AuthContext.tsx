@@ -38,25 +38,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        
-        // Update user as active in the system
-        const systemUser = await hybridDataService.getUser(parsedUser.email);
-        if (systemUser) {
-          systemUser.isActive = true;
-          await hybridDataService.updateUser(systemUser);
+    const initializeAuth = async () => {
+      // Check for existing session
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          
+          // Update user as active in the system
+          const systemUser = await hybridDataService.getUser(parsedUser.email);
+          if (systemUser) {
+            systemUser.isActive = true;
+            await hybridDataService.updateUser(systemUser);
+          }
+        } catch (error) {
+          console.error('Error loading saved user:', error);
+          localStorage.removeItem('currentUser');
         }
-      } catch (error) {
-        console.error('Error loading saved user:', error);
-        localStorage.removeItem('currentUser');
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
