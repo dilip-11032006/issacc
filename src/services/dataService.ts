@@ -238,6 +238,11 @@ class DataService {
     this.saveData(data);
   }
 
+  deleteComponent(componentId: string): void {
+    const data = this.getData();
+    data.components = data.components.filter(c => c.id !== componentId);
+    this.saveData(data);
+  }
   // Request operations
   addRequest(request: BorrowRequest): void {
     const data = this.getData();

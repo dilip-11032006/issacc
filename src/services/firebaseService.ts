@@ -182,6 +182,15 @@ class FirebaseService {
     }
   }
 
+  async deleteComponent(componentId: string): Promise<void> {
+    try {
+      const docRef = doc(db, 'components', componentId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting component:', error);
+      throw error;
+    }
+  }
   async getAllComponents(): Promise<Component[]> {
     try {
       const querySnapshot = await getDocs(collection(db, 'components'));

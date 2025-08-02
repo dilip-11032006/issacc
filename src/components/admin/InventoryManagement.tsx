@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Package, Search } from 'lucide-react';
+import { Plus, Edit, Package, Search, Trash2 } from 'lucide-react';
 import { hybridDataService } from '../../services/hybridDataService';
 import { Component } from '../../types';
 
@@ -68,6 +68,17 @@ const InventoryManagement: React.FC = () => {
     setShowAddForm(true);
   };
 
+  const handleDelete = async (component: Component) => {
+    if (window.confirm(`Are you sure you want to delete "${component.name}"? This action cannot be undone.`)) {
+      try {
+        await hybridDataService.deleteComponent(component.id);
+        loadComponents();
+      } catch (error) {
+        console.error('Error deleting component:', error);
+        alert('Failed to delete component. Please try again.');
+      }
+    }
+  };
   const resetForm = () => {
     setFormData({
       name: '',
@@ -228,14 +239,27 @@ const InventoryManagement: React.FC = () => {
                   </div>
                 </div>
                 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleEdit(component)}
-                  className="p-2 text-peacock-400 hover:text-peacock-300 hover:bg-dark-700/50 rounded-lg transition-all duration-200"
-                >
-                  <Edit className="w-4 h-4" />
-                </motion.button>
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleEdit(component)}
+                    className="p-2 text-peacock-400 hover:text-peacock-300 hover:bg-dark-700/50 rounded-lg transition-all duration-200"
+                    title="Edit component"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleDelete(component)}
+                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all duration-200"
+                    title="Delete component"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </motion.button>
+                </div>
               </div>
 
               <div className="space-y-3">

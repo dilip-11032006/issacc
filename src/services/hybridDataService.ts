@@ -158,6 +158,17 @@ class HybridDataService {
     }
   }
 
+  async deleteComponent(componentId: string): Promise<void> {
+    try {
+      if (this.isOnline && this.useFirebase) {
+        await firebaseService.deleteComponent(componentId);
+      }
+      dataService.deleteComponent(componentId);
+    } catch (error) {
+      console.error('Error deleting component:', error);
+      dataService.deleteComponent(componentId);
+    }
+  }
   // Request operations
   async addRequest(request: BorrowRequest): Promise<void> {
     try {
